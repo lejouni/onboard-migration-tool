@@ -1,0 +1,120 @@
+{
+  "templates": [
+    {
+      "name": "SAST and IAC Workflow",
+      "file": "SAST,IAC.yml",
+      "template_type": "workflow",
+      "description": "Complete workflow for SAST and Infrastructure as Code scanning",
+      "languages": ["JavaScript", "TypeScript", "Java", "Python", "C#", "Go", "Ruby"],
+      "tools": ["Polaris"],
+      "use_cases": ["SAST", "IAC", "Security vulnerabilities", "Infrastructure security"],
+      "requirements": {
+        "secrets": ["POLARIS_ACCESS_TOKEN"],
+        "variables": ["POLARIS_SERVER_URL"]
+      }
+    },
+    {
+      "name": "SCA and IAC Workflow",
+      "file": "SCA,IAC.yml",
+      "template_type": "workflow",
+      "description": "Complete workflow for Software Composition Analysis and Infrastructure as Code scanning",
+      "languages": ["All"],
+      "tools": ["Black Duck SCA"],
+      "use_cases": ["SCA", "IAC", "Dependency scanning", "License compliance", "Infrastructure security"],
+      "requirements": {
+        "secrets": ["BLACKDUCK_API_TOKEN"],
+        "variables": ["BLACKDUCK_URL"]
+      }
+    },
+    {
+      "name": "Comprehensive Security Workflow",
+      "file": "SAST,SCA,IAC,DAST.yml",
+      "template_type": "workflow",
+      "description": "Complete security workflow with SAST, SCA, IAC, and DAST scanning",
+      "languages": ["All"],
+      "tools": ["Polaris", "Black Duck SCA"],
+      "use_cases": ["SAST", "SCA", "IAC", "DAST", "Complete security coverage", "Multi-language projects"],
+      "requirements": {
+        "secrets": ["POLARIS_ACCESS_TOKEN", "BLACKDUCK_API_TOKEN"],
+        "variables": ["POLARIS_SERVER_URL", "BLACKDUCK_URL"]
+      }
+    },
+    {
+      "name": "Polaris Security Scan Job",
+      "file": "jobs/polaris-security-scan-job.yml",
+      "template_type": "job",
+      "description": "Standalone job for Polaris SAST scanning",
+      "languages": ["JavaScript", "TypeScript", "Java", "Python", "C#", "Go", "Ruby"],
+      "tools": ["Polaris"],
+      "use_cases": ["SAST", "Code quality", "Security vulnerabilities"],
+      "requirements": {
+        "secrets": ["POLARIS_ACCESS_TOKEN"],
+        "variables": ["POLARIS_SERVER_URL"]
+      }
+    },
+    {
+      "name": "Coverity Security Scan Job",
+      "file": "jobs/coverity-security-scan-job.yml",
+      "template_type": "job",
+      "description": "Standalone job for Coverity SAST scanning",
+      "languages": ["C", "C++", "Java", "C#", "JavaScript"],
+      "tools": ["Coverity"],
+      "use_cases": ["SAST", "Static analysis", "Security vulnerabilities", "Code quality"],
+      "requirements": {
+        "secrets": ["COVERITY_USER", "COVERITY_PASSPHRASE"],
+        "variables": ["COVERITY_URL"]
+      }
+    },
+    {
+      "name": "Black Duck SCA Scan Job",
+      "file": "jobs/black-duck-sca-scan-job.yml",
+      "template_type": "job",
+      "description": "Standalone job for Black Duck SCA scanning",
+      "languages": ["All"],
+      "tools": ["Black Duck SCA"],
+      "use_cases": ["SCA", "Dependency scanning", "License compliance", "Vulnerability detection"],
+      "requirements": {
+        "secrets": ["BLACKDUCK_API_TOKEN"],
+        "variables": ["BLACKDUCK_URL"]
+      }
+    },
+    {
+      "name": "Polaris Security Scan Step",
+      "file": "steps/polaris-security-scan-step.yml",
+      "template_type": "step",
+      "description": "Single step for adding Polaris SAST scanning to existing job",
+      "languages": ["JavaScript", "TypeScript", "Java", "Python", "C#", "Go", "Ruby"],
+      "tools": ["Polaris"],
+      "use_cases": ["SAST", "Code quality", "Security vulnerabilities"],
+      "requirements": {
+        "secrets": ["POLARIS_ACCESS_TOKEN"],
+        "variables": ["POLARIS_SERVER_URL"]
+      }
+    },
+    {
+      "name": "Black Duck SCA Scan Step",
+      "file": "steps/black-duck-sca-scan-step.yml",
+      "template_type": "step",
+      "description": "Single step for adding Black Duck SCA scanning to existing job",
+      "languages": ["All"],
+      "tools": ["Black Duck SCA"],
+      "use_cases": ["SCA", "Dependency scanning", "License compliance", "Vulnerability detection"],
+      "requirements": {
+        "secrets": ["BLACKDUCK_API_TOKEN"],
+        "variables": ["BLACKDUCK_URL"]
+      }
+    }
+  ],
+  "common_configuration": {
+    "github_token": "Always required: ${{ secrets.GITHUB_TOKEN }}",
+    "pr_comments": "Enable with: *_prComment_enabled: true",
+    "log_artifacts": "Automatically saved to .bridge directory",
+    "action_version": "blackduck-inc/black-duck-security-scan@v2"
+  },
+  "setup_guide": {
+    "secrets": "Configure in Repository Settings > Secrets and variables > Actions",
+    "variables": "Configure in Repository Settings > Secrets and variables > Actions", 
+    "permissions": "Ensure GITHUB_TOKEN has write access for PR comments",
+    "projects": "Ensure Black Duck projects/streams exist before first scan"
+  }
+}

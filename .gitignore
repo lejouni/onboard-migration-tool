@@ -1,0 +1,165 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+!.vscode/tasks.json
+!.vscode/settings.json
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Node.js / React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Frontend build outputs
+frontend/build/
+frontend/dist/
+
+# Testing
+frontend/coverage/
+
+# Production
+/build
+
+# Misc frontend
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database files (contains sensitive encrypted data)
+backend/data/secrets.db
+backend/data/templates.db
+backend/data/*.db
+
+# Encryption keys (CRITICAL - never commit!)
+backend/data/secret.key
+backend/data/*.key
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.old
+
+# Python cache
+*.pyc
+*.pyo
+*.pyd
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Type checking
+.pyre/
+.pytype/
+
+# Profiling
+*.prof
+
+# Local configuration
+config.local.json
+secrets.json
+
+# IDE - VSCode
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# IDE - IntelliJ
+*.iml
+.idea/
+
+# System Files
+.DS_Store
+Thumbs.db

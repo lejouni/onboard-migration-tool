@@ -1,0 +1,52 @@
+name: Test Workflow with Mixed Security Tools
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Build application  
+      run: npm run build
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        
+    - name: Build Java components
+      run: ./gradlew build
+      
+    - name: Run Polaris scan
+      uses: blackduck-inc/black-duck-security-scan@v2
+      with:
+        polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+        polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+        
+    - name: Build Docker image
+      run: docker build -t myapp:latest .
+      
+    - name: Security scan with custom tool
+      run: |
+        echo "Running custom security analysis"
+        # This workflow has Polaris but missing SCA for npm/gradle
+        # Should recommend Black Duck SCA
+        # Should recommend BDBA for Docker image

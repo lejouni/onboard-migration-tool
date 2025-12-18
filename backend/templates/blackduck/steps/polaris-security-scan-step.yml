@@ -1,0 +1,25 @@
+- name: Get Application name for Polaris
+  uses: blackduck-community/github_polaris_application_name@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    github_repo: ${{github.repository}}
+- name: Polaris {assessment_types} Scan
+  uses: blackduck-inc/black-duck-security-scan@v2
+  with:
+    polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+    polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+    polaris_application_name: ${{ env.POLARIS_APPLICATION_NAME }}
+    polaris_project_name: ${{ github.event.repository.name }}
+    polaris_assessment_types: '{assessment_types}'
+    polaris_branch_name: ${{ github.head_ref || github.ref_name }}
+    polaris_test_sast_type: ${{ (github.event_name == 'pull_request' && contains(fromJSON('["opened","synchronize","reopened"]'), github.event.action)) && 'SAST_RAPID' || '' }}
+    polaris_prComment_enabled: true
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+
+- name: Save Logs
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: polaris-logs
+    path: ${{ github.workspace }}/.bridge
+    include-hidden-files: true
