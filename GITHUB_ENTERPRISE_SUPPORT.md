@@ -78,18 +78,42 @@ GitHub Enterprise Server uses the same token-based authentication as GitHub.com.
    - `read:org` - Read org and team membership
    - `admin:org` - Full control of orgs and teams (if managing organization secrets)
 
-## Secrets Manager
+## Configuration Architecture
 
-The Secrets Manager tab in the application now includes instructions for GitHub Enterprise configuration. You'll see a configuration section that explains how to set up the environment variable.
+**Important:** The GitHub API URL is configured via **environment variable only**, not through Secrets Manager.
+
+- **GITHUB_API_URL** - Environment variable (configuration, not a secret)
+  - Set before starting the backend
+  - Defaults to `https://api.github.com` if not set
+  - Not stored in the database
+
+- **GITHUB_TOKEN** - Stored in Secrets Manager (sensitive credential)
+  - Encrypted in the database
+  - Managed through the Secrets Manager UI
+  - Can be updated at runtime
+
+This separation follows best practices:
+- **Configuration** (API URL) = Environment variable
+- **Secrets** (tokens) = Encrypted database storage
 
 ## Verification
 
 To verify your GitHub Enterprise connection is working:
 
-1. Start the backend with the `GITHUB_API_URL` environment variable set
-2. Navigate to the GitHub Organizations tab
-3. Enter your GitHub Enterprise token in the Secrets Manager
-4. Try fetching organizations - you should see your Enterprise organizations
+1. Set the `GITHUB_API_URL` environment variable to your GitHub Enterprise Server URL
+2. Start the backend - you should see: `✓ Using GitHub API URL: https://github.enterprise.com/api/v3`
+3. Start the frontend and open the application
+4. Navigate to the **Secrets Manager** tab
+5. Create a secret named `GITHUB_TOKEN` with your GitHub Enterprise Personal Access Token
+6. Go to the **GitHub Organizations** tab
+7. You should see your Enterprise organizations listed
+
+**Expected startup output:**
+```
+✓ Created GITHUB_TOKEN secret (empty - requires configuration)
+✓ Using GitHub API URL: https://github.enterprise.com/api/v3
+  (From GITHUB_API_URL environment variable)
+```
 
 ## Troubleshooting
 

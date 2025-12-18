@@ -21,23 +21,38 @@ A comprehensive full-stack web application for managing GitHub organizations, re
 │   ├── main.py       # Main FastAPI application
 │   ├── github_service.py # GitHub API integration
 │   ├── secrets_crud.py   # Encrypted secrets management
+│   ├── templates_crud.py # Template management
 │   ├── crypto.py         # Encryption utilities
+│   ├── database.py       # Dual database configuration
+│   ├── workflow_parser.py # YAML workflow manipulation
 │   ├── requirements.txt  # Python dependencies
+│   ├── data/             # Database storage (gitignored)
+│   │   ├── secrets.db    # Encrypted secrets database
+│   │   ├── templates.db  # Workflow templates database
+│   │   └── secret.key    # Encryption key (NEVER commit!)
+│   ├── templates/        # Template files
+│   │   └── blackduck/    # Black Duck security templates
 │   └── README.md         # Backend setup instructions
 ├── frontend/         # React frontend application
 │   ├── src/
-│   │   ├── App.js              # Main application component
-│   │   ├── GitHubOrganizations.js # GitHub organizations view
-│   │   ├── WorkflowSearch.js   # Workflow search functionality
-│   │   ├── SecretsManager.js   # Secrets management interface
-│   │   ├── githubAPI.js        # GitHub API client
-│   │   └── index.css           # Application styles
+│   │   ├── App.js                    # Main application component
+│   │   ├── GitHubOrganizations.js   # GitHub organizations view
+│   │   ├── WorkflowSearch.js        # Workflow search functionality
+│   │   ├── AIWorkflowAnalysis.js    # AI-powered workflow analysis
+│   │   ├── TemplatesManager.js      # Template management interface
+│   │   ├── LegacyConfigCleanup.js   # Legacy config scanner
+│   │   ├── OnboardingScanner.js     # Repository onboarding scanner
+│   │   ├── SecretsManager.js        # Secrets management interface
+│   │   ├── githubAPI.js             # GitHub API client
+│   │   ├── secretsAPI.js            # Secrets API client
+│   │   ├── templatesAPI.js          # Templates API client
+│   │   └── index.css                # Application styles
 │   ├── public/       # Static files
 │   ├── package.json  # Node.js dependencies
 │   └── README.md     # Frontend setup instructions
 ├── .vscode/          # VS Code tasks and settings
-│   └── tasks.json    # VS Code tasks
-├── .gitignore        # Git ignore file
+│   └── tasks.json    # VS Code build/run tasks
+├── .gitignore        # Git ignore rules (protects secrets & databases)
 └── README.md         # This file
 ```
 
@@ -338,7 +353,20 @@ On first startup, the backend automatically:
 
 ## GitHub Enterprise Server Support
 
-This application supports both **GitHub.com** and **GitHub Enterprise Server**. To use with GitHub Enterprise:
+This application supports both **GitHub.com** and **GitHub Enterprise Server**. 
+
+### Configuration Architecture
+
+**GITHUB_API_URL** - Environment variable (not stored in Secrets Manager):
+- Set once before starting the backend
+- Defaults to `https://api.github.com` if not set
+- This is configuration, not a secret
+
+**GITHUB_TOKEN** - Secret (stored encrypted in database):
+- Stored via Secrets Manager UI
+- Can be updated at runtime
+
+### Setup for GitHub Enterprise
 
 1. **Set the environment variable** before starting the backend:
 
