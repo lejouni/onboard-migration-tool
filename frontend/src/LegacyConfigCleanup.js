@@ -1095,13 +1095,12 @@ const LegacyConfigCleanup = () => {
             {/* Filter Bar */}
             <div style={{ 
               display: 'flex', 
+              flexDirection: 'column',
               gap: '16px', 
-              marginBottom: '24px',
-              flexWrap: 'wrap',
-              alignItems: 'center'
+              marginBottom: '24px'
             }}>
-              {/* Repository Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* First Row - Repository, Type, Keyword */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <label style={{ fontSize: '14px', fontWeight: '500', color: '#666' }}>Repository:</label>
                 <select
                   value={repositoryFilter}
@@ -1201,8 +1200,11 @@ const LegacyConfigCleanup = () => {
                     <option key={keyword} value={keyword}>{keyword}</option>
                   ))}
                 </select>
-                
-                <label style={{ fontSize: '14px', fontWeight: '500', color: '#666', marginLeft: '12px' }}>Branch:</label>
+              </div>
+
+              {/* Second Row - Branch Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <label style={{ fontSize: '14px', fontWeight: '500', color: '#666' }}>Branch:</label>
                 <select
                   value={branchFilter}
                   onChange={(e) => {
@@ -1215,7 +1217,7 @@ const LegacyConfigCleanup = () => {
                     border: '2px solid #e8e8e8',
                     fontSize: '14px',
                     cursor: 'pointer',
-                    minWidth: '200px',
+                    minWidth: '300px',
                     backgroundColor: '#fff',
                     transition: 'all 0.3s ease',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
