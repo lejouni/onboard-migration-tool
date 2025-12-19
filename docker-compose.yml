@@ -29,6 +29,11 @@ services:
       dockerfile: Dockerfile
     image: github-onboarding-frontend:latest
     container_name: github-onboarding-frontend
+    environment:
+      # API timeout in milliseconds (default: 30000 = 30 seconds)
+      # Increase this if you experience timeout errors during Legacy Cleanup scans
+      # Common values: 30000 (30s), 60000 (60s), 120000 (2min)
+      - REACT_APP_API_TIMEOUT=60000
     ports:
       - "80:80"
     depends_on:

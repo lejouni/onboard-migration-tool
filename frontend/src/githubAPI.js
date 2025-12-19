@@ -3,8 +3,9 @@ import axios from 'axios';
 // Use relative URL for Docker/nginx proxy, or localhost for local development
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
-// Set timeout to 30 seconds for GitHub API calls (some operations like fetching workflow info can be slow)
-axios.defaults.timeout = 30000;
+// Set timeout for GitHub API calls (some operations like fetching workflow info can be slow)
+// Can be configured via REACT_APP_API_TIMEOUT environment variable (in milliseconds)
+axios.defaults.timeout = parseInt(process.env.REACT_APP_API_TIMEOUT || '30000', 10);
 
 export const githubAPI = {
   // Check if GITHUB_TOKEN exists and is valid

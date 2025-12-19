@@ -223,7 +223,9 @@ docker-compose logs --tail=100
 docker-compose down
 ```
 
-#### For GitHub Enterprise Server
+#### Configuration Options
+
+**GitHub Enterprise Server:**
 
 Edit `docker-compose.yml` and uncomment/set the environment variable:
 
@@ -231,6 +233,21 @@ Edit `docker-compose.yml` and uncomment/set the environment variable:
 environment:
   - GITHUB_API_URL=https://github.enterprise.com/api/v3
 ```
+
+**API Timeout Configuration:**
+
+If you experience timeout errors during Legacy Cleanup scans or when working with large repositories, you can increase the API timeout. Edit `docker-compose.yml` and add:
+
+```yaml
+frontend:
+  environment:
+    - REACT_APP_API_TIMEOUT=60000  # 60 seconds (default: 30000)
+```
+
+Common timeout values:
+- `30000` - 30 seconds (default)
+- `60000` - 60 seconds (recommended for large organizations)
+- `120000` - 2 minutes (for very large scans)
 
 Then rebuild and restart:
 ```bash
