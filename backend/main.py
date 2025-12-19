@@ -158,7 +158,7 @@ async def startup_event():
                 secrets_db,
                 name="GITHUB_TOKEN",
                 value="",  # Empty value - user must fill this
-                description="[AUTO-GENERATED] Your GitHub Personal Access Token - Please update with your actual token from https://github.com/settings/tokens"
+                description=""
             )
             print("✓ Created GITHUB_TOKEN secret (empty - requires configuration)")
         
