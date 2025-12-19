@@ -204,23 +204,36 @@ class GitHubService:
         
         repositories = []
         per_page = 100
+        page = 1
         
         async with GitHubService.get_http_client() as client:
-            # Only fetch first page for faster response (we'll only detail 10 repos anyway)
-            response = await client.get(
-                f"{GitHubService.BASE_URL}/orgs/{org_name}/repos",
-                headers=headers,
-                params={"page": 1, "per_page": per_page, "sort": "updated", "direction": "desc"}
-            )
-            
-            # Check for SSO errors before raising status
-            if response.status_code == 403:
-                error_text = response.text
-                if GitHubService.is_sso_error(error_text):
-                    raise Exception(GitHubService.get_sso_error_message(org_name))
-            
-            response.raise_for_status()
-            repositories = response.json()
+            # Fetch all pages to get all repositories
+            while True:
+                response = await client.get(
+                    f"{GitHubService.BASE_URL}/orgs/{org_name}/repos",
+                    headers=headers,
+                    params={"page": page, "per_page": per_page, "sort": "updated", "direction": "desc"}
+                )
+                
+                # Check for SSO errors before raising status
+                if response.status_code == 403:
+                    error_text = response.text
+                    if GitHubService.is_sso_error(error_text):
+                        raise Exception(GitHubService.get_sso_error_message(org_name))
+                
+                response.raise_for_status()
+                page_repos = response.json()
+                
+                if not page_repos:
+                    break
+                
+                repositories.extend(page_repos)
+                
+                # If we got fewer than per_page results, we're done
+                if len(page_repos) < per_page:
+                    break
+                
+                page += 1
         
         # Only fetch detailed info for the first 10 repositories to speed up response
         # Users can view details for specific repos individually
@@ -470,22 +483,35 @@ class GitHubService:
         
         repositories = []
         per_page = 100
+        page = 1
 
         async with GitHubService.get_http_client() as client:
-            # Only fetch first page for faster response (we'll only detail first N repos)
-            response = await client.get(
-                f"{GitHubService.BASE_URL}/user/repos",
-                headers=headers,
-                params={
-                    "page": 1,
-                    "per_page": per_page,
-                    "sort": "updated",
-                    "direction": "desc",
-                    "affiliation": "owner,collaborator,organization_member"
-                }
-            )
-            response.raise_for_status()
-            repositories = response.json()
+            # Fetch all pages to get all repositories
+            while True:
+                response = await client.get(
+                    f"{GitHubService.BASE_URL}/user/repos",
+                    headers=headers,
+                    params={
+                        "page": page,
+                        "per_page": per_page,
+                        "sort": "updated",
+                        "direction": "desc",
+                        "affiliation": "owner,collaborator,organization_member"
+                    }
+                )
+                response.raise_for_status()
+                page_repos = response.json()
+                
+                if not page_repos:
+                    break
+                
+                repositories.extend(page_repos)
+                
+                # If we got fewer than per_page results, we're done
+                if len(page_repos) < per_page:
+                    break
+                
+                page += 1
         
         # Only fetch detailed info for the first 10 repositories to speed up response
         # Users can view details for specific repos individually

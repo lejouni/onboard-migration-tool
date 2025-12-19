@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { getOrganizationRepositories, getUserRepositories } from './githubAPI';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+// Use relative URL for Docker/nginx proxy, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : '';
 
 function OnboardingScanner() {
   const [repositories, setRepositories] = useState([]);

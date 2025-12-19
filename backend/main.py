@@ -202,10 +202,6 @@ class ItemCreate(BaseModel):
 items_db = []
 next_id = 1
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the Backend API"}
-
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
@@ -1035,6 +1031,9 @@ async def get_repository_tree(full_repo_name: str, branch: str = "main", db: Ses
                 detail="GITHUB_TOKEN is invalid. Please update it in Secrets Management."
             )
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
             headers = {
                 "Authorization": f"Bearer {token}",
@@ -1044,14 +1043,14 @@ async def get_repository_tree(full_repo_name: str, branch: str = "main", db: Ses
             # If no specific branch provided, get the default branch
             branch_to_use = branch
             if not branch or branch == "main":
-                repo_url = f"https://api.github.com/repos/{full_repo_name}"
+                repo_url = f"{base_url}/repos/{full_repo_name}"
                 repo_response = await client.get(repo_url, headers=headers)
                 if repo_response.status_code == 200:
                     repo_data = repo_response.json()
                     branch_to_use = repo_data.get('default_branch', 'main')
             
             # Get tree recursively to find files in subdirectories
-            tree_url = f"https://api.github.com/repos/{full_repo_name}/git/trees/{branch_to_use}?recursive=1"
+            tree_url = f"{base_url}/repos/{full_repo_name}/git/trees/{branch_to_use}?recursive=1"
             tree_response = await client.get(tree_url, headers=headers)
             
             if tree_response.status_code != 200:
@@ -1087,8 +1086,11 @@ async def get_file_contents(full_repo_name: str, file_path: str, db: Session = D
                 detail="GITHUB_TOKEN is invalid. Please update it in Secrets Management."
             )
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
-            file_url = f"https://api.github.com/repos/{full_repo_name}/contents/{file_path}"
+            file_url = f"{base_url}/repos/{full_repo_name}/contents/{file_path}"
             headers = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/vnd.github.v3+json"
@@ -1144,8 +1146,11 @@ async def delete_repository_file(
                 "Accept": "application/vnd.github.v3+json"
             }
             
+            # Get GitHub API base URL
+            base_url = GitHubService.get_base_url()
+            
             # Get file SHA
-            file_url = f"https://api.github.com/repos/{full_repo_name}/contents/{request.file_path}"
+            file_url = f"{base_url}/repos/{full_repo_name}/contents/{request.file_path}"
             file_response = await client.get(file_url, headers=headers, params={"ref": request.branch})
             
             if file_response.status_code != 200:
@@ -1212,6 +1217,9 @@ async def delete_repository_file_pr(
                 detail="GITHUB_TOKEN is invalid. Please update it in Secrets Management."
             )
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
             headers = {
                 "Authorization": f"Bearer {token}",
@@ -1219,7 +1227,7 @@ async def delete_repository_file_pr(
             }
             
             # Get repository info
-            repo_url = f"https://api.github.com/repos/{full_repo_name}"
+            repo_url = f"{base_url}/repos/{full_repo_name}"
             repo_response = await client.get(repo_url, headers=headers)
             
             if repo_response.status_code != 200:
@@ -1229,7 +1237,7 @@ async def delete_repository_file_pr(
             default_branch = repo_data.get('default_branch', 'main')
             
             # Get the SHA of the default branch
-            ref_url = f"https://api.github.com/repos/{full_repo_name}/git/refs/heads/{default_branch}"
+            ref_url = f"{base_url}/repos/{full_repo_name}/git/refs/heads/{default_branch}"
             ref_response = await client.get(ref_url, headers=headers)
             
             if ref_response.status_code != 200:
@@ -1241,7 +1249,7 @@ async def delete_repository_file_pr(
             # Create a new branch
             import time
             new_branch_name = f"remove-legacy-config-{int(time.time())}"
-            create_branch_url = f"https://api.github.com/repos/{full_repo_name}/git/refs"
+            create_branch_url = f"{base_url}/repos/{full_repo_name}/git/refs"
             import json
             create_branch_response = await client.request(
                 "POST",
@@ -1257,7 +1265,7 @@ async def delete_repository_file_pr(
                 raise HTTPException(status_code=500, detail=f"Failed to create branch: {create_branch_response.text}")
             
             # Get file SHA
-            file_url = f"https://api.github.com/repos/{full_repo_name}/contents/{request.file_path}"
+            file_url = f"{base_url}/repos/{full_repo_name}/contents/{request.file_path}"
             file_response = await client.get(file_url, headers=headers, params={"ref": new_branch_name})
             
             if file_response.status_code != 200:
@@ -1285,7 +1293,7 @@ async def delete_repository_file_pr(
                 )
             
             # Create pull request
-            pr_url = f"https://api.github.com/repos/{full_repo_name}/pulls"
+            pr_url = f"{base_url}/repos/{full_repo_name}/pulls"
             pr_response = await client.request(
                 "POST",
                 pr_url,
@@ -1659,6 +1667,9 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
         workflow_filename = re.sub(r'[^a-zA-Z0-9-]', '-', template.name.lower()) + '.yml'
         workflow_path = f".github/workflows/{workflow_filename}"
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
             headers = {
                 "Authorization": f"token {github_token}",
@@ -1668,7 +1679,7 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
             if method == "direct":
                 # Direct commit to branch
                 # First, check if file already exists
-                file_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{workflow_path}"
+                file_url = f"{base_url}/repos/{owner}/{repo_name}/contents/{workflow_path}"
                 params = {"ref": branch}
                 
                 file_sha = None
@@ -1707,7 +1718,7 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
             else:  # pull_request
                 # Create a new branch and PR
                 # 1. Get the base branch SHA
-                ref_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/ref/heads/{branch}"
+                ref_url = f"{base_url}/repos/{owner}/{repo_name}/git/ref/heads/{branch}"
                 ref_response = await client.get(ref_url, headers=headers)
                 
                 if ref_response.status_code != 200:
@@ -1717,7 +1728,7 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
                 
                 # 2. Create a new branch
                 new_branch = f"add-{workflow_filename.replace('.yml', '')}"
-                create_ref_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/refs"
+                create_ref_url = f"{base_url}/repos/{owner}/{repo_name}/git/refs"
                 create_ref_data = {
                     "ref": f"refs/heads/{new_branch}",
                     "sha": base_sha
@@ -1737,7 +1748,7 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
                     raise HTTPException(status_code=500, detail=f"Failed to create branch: {create_ref_response.text}")
                 
                 # 3. Add the workflow file to the new branch
-                file_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{workflow_path}"
+                file_url = f"{base_url}/repos/{owner}/{repo_name}/contents/{workflow_path}"
                 
                 import base64
                 content_base64 = base64.b64encode(content_to_apply.encode()).decode()
@@ -1754,7 +1765,7 @@ async def apply_template_to_repository(request: dict, db: Session = Depends(get_
                     raise HTTPException(status_code=500, detail=f"Failed to commit workflow: {commit_response.text}")
                 
                 # 4. Create pull request
-                pr_url = f"https://api.github.com/repos/{owner}/{repo_name}/pulls"
+                pr_url = f"{base_url}/repos/{owner}/{repo_name}/pulls"
                 pr_data = {
                     "title": pr_title,
                     "body": pr_body,
@@ -1983,6 +1994,9 @@ async def apply_to_current_branch(request: ApplyToCurrentBranchRequest, db: Sess
         owner, repo_name = parts
         
         # Get repository default branch
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
             headers = {
                 "Authorization": f"token {token}",
@@ -1990,7 +2004,7 @@ async def apply_to_current_branch(request: ApplyToCurrentBranchRequest, db: Sess
             }
             
             # Get repository info to find default branch
-            repo_url = f"https://api.github.com/repos/{owner}/{repo_name}"
+            repo_url = f"{base_url}/repos/{owner}/{repo_name}"
             repo_response = await client.get(repo_url, headers=headers)
             
             if repo_response.status_code != 200:
@@ -2001,7 +2015,7 @@ async def apply_to_current_branch(request: ApplyToCurrentBranchRequest, db: Sess
             
             # Create or update polaris.yaml file in the default branch
             file_path = "polaris.yaml"
-            file_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{file_path}"
+            file_url = f"{base_url}/repos/{owner}/{repo_name}/contents/{file_path}"
             
             # Check if file already exists
             file_check_response = await client.get(
@@ -2290,12 +2304,15 @@ async def preview_workflow_enhancement(request: WorkflowEnhancementPreviewReques
             raise HTTPException(status_code=400, detail="GITHUB_TOKEN secret not found or invalid")
         
         # Fetch original workflow content
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         headers = {
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
         
-        workflow_url = f"https://api.github.com/repos/{request.repository}/contents/{request.workflow_file_path}"
+        workflow_url = f"{base_url}/repos/{request.repository}/contents/{request.workflow_file_path}"
         
         async with httpx.AsyncClient(verify=False) as client:
             response = await client.get(workflow_url, headers=headers)
@@ -2426,8 +2443,9 @@ async def apply_workflow_enhancement(request: WorkflowEnhancementApplyRequest):
             raise HTTPException(status_code=400, detail="GITHUB_TOKEN secret not found or invalid")
         
         headers = {
-            'Authorization': f'token {github_token}',
-            'Accept': 'application/vnd.github.v3+json'
+            'Authorization': f'Bearer {github_token}',
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
         }
         
         # Get template
@@ -2439,10 +2457,19 @@ async def apply_workflow_enhancement(request: WorkflowEnhancementApplyRequest):
         finally:
             templates_db.close()
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
-            # 1. Get current file content and SHA
-            file_url = f"https://api.github.com/repos/{request.repository}/contents/{request.workflow_file_path}"
-            file_response = await client.get(file_url, headers=headers)
+            # Determine the base branch to work from
+            repo_url = f"{base_url}/repos/{request.repository}"
+            repo_response = await client.get(repo_url, headers=headers)
+            default_branch = repo_response.json()['default_branch']
+            
+            # 1. Get current file content and SHA from the base branch
+            file_url = f"{base_url}/repos/{request.repository}/contents/{request.workflow_file_path}"
+            # Explicitly get from default branch to ensure we have the right SHA
+            file_response = await client.get(f"{file_url}?ref={default_branch}", headers=headers)
             
             if file_response.status_code != 200:
                 raise HTTPException(
@@ -2465,6 +2492,9 @@ async def apply_workflow_enhancement(request: WorkflowEnhancementApplyRequest):
             )
             
             parser = WorkflowParser()
+            
+            # Initialize job_id as None (will be set for job templates)
+            job_id = None
             
             # Check if this is a step fragment or job fragment
             if template.template_type == 'step':
@@ -2524,59 +2554,175 @@ async def apply_workflow_enhancement(request: WorkflowEnhancementApplyRequest):
             
             # If method is pull_request, create a new branch first
             if request.method == 'pull_request':
-                # Get default branch SHA
-                repo_url = f"https://api.github.com/repos/{request.repository}"
-                repo_response = await client.get(repo_url, headers=headers)
-                default_branch = repo_response.json()['default_branch']
-                
                 # Get ref for default branch
-                ref_url = f"https://api.github.com/repos/{request.repository}/git/ref/heads/{default_branch}"
+                ref_url = f"{base_url}/repos/{request.repository}/git/ref/heads/{default_branch}"
                 ref_response = await client.get(ref_url, headers=headers)
                 base_sha = ref_response.json()['object']['sha']
                 
                 # Create new branch (check if it already exists first)
-                check_branch_url = f"https://api.github.com/repos/{request.repository}/git/ref/heads/{branch}"
+                check_branch_url = f"{base_url}/repos/{request.repository}/git/ref/heads/{branch}"
                 check_response = await client.get(check_branch_url, headers=headers)
                 
                 if check_response.status_code == 404:
                     # Branch doesn't exist, create it
-                    create_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs"
+                    create_ref_url = f"{base_url}/repos/{request.repository}/git/refs"
                     create_ref_payload = {
                         "ref": f"refs/heads/{branch}",
                         "sha": base_sha
                     }
+                    print(f"Creating branch: {branch} from SHA: {base_sha}")
                     create_ref_response = await client.post(create_ref_url, headers=headers, json=create_ref_payload)
                     
                     if create_ref_response.status_code not in [201]:
+                        print(f"Failed to create branch: {create_ref_response.status_code} - {create_ref_response.text}")
                         raise HTTPException(
                             status_code=create_ref_response.status_code,
                             detail=f"Failed to create branch: {create_ref_response.json().get('message', 'Unknown error')}"
                         )
+                    print(f"Branch created successfully: {branch}")
+                    # After creating branch, re-fetch file SHA from the new branch
+                    print(f"Fetching file SHA from new branch: {branch}")
+                    import asyncio
+                    await asyncio.sleep(0.5)  # Small delay to ensure branch is ready
+                    branch_file_response = await client.get(f"{file_url}?ref={branch}", headers=headers)
+                    if branch_file_response.status_code == 200:
+                        file_sha = branch_file_response.json()['sha']
+                        print(f"File SHA from new branch: {file_sha}")
+                    else:
+                        print(f"Warning: Could not fetch file from new branch (status {branch_file_response.status_code}), using main SHA")
                 elif check_response.status_code == 200:
-                    # Branch already exists, update the ref to point to the latest commit
-                    update_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs/heads/{branch}"
-                    update_ref_payload = {
-                        "sha": base_sha,
-                        "force": True
-                    }
-                    await client.patch(update_ref_url, headers=headers, json=update_ref_payload)
+                    # Branch already exists, delete it first then recreate
+                    print(f"Branch already exists: {branch}, deleting and recreating")
+                    delete_ref_url = f"{base_url}/repos/{request.repository}/git/refs/heads/{branch}"
+                    delete_response = await client.delete(delete_ref_url, headers=headers)
+                    if delete_response.status_code == 204:
+                        print(f"Branch deleted successfully: {branch}")
+                        # Wait a moment for GitHub to process the deletion
+                        import asyncio
+                        await asyncio.sleep(0.5)
+                        # Now create the branch fresh
+                        create_ref_url = f"{base_url}/repos/{request.repository}/git/refs"
+                        create_ref_payload = {
+                            "ref": f"refs/heads/{branch}",
+                            "sha": base_sha
+                        }
+                        print(f"Creating fresh branch: {branch} from SHA: {base_sha}")
+                        create_ref_response = await client.post(create_ref_url, headers=headers, json=create_ref_payload)
+                        if create_ref_response.status_code not in [201]:
+                            print(f"Failed to recreate branch: {create_ref_response.status_code} - {create_ref_response.text}")
+                            raise HTTPException(
+                                status_code=create_ref_response.status_code,
+                                detail=f"Failed to recreate branch: {create_ref_response.json().get('message', 'Unknown error')}"
+                            )
+                        print(f"Branch recreated successfully: {branch}")
+                        # Keep using the original file_sha from default branch
+                        # GitHub API will create the commit on the target branch when we include "branch" in payload
+                        print(f"Using file SHA from default branch ({default_branch}): {file_sha}")
+                    else:
+                        print(f"Failed to delete branch: {delete_response.status_code} - {delete_response.text}")
+                        raise HTTPException(status_code=delete_response.status_code, detail=f"Failed to delete existing branch")
             
-            # 4. Update file via GitHub API
-            update_payload = {
-                "message": commit_message,
+            # 4. Update file via GitHub Git Data API (lower-level API that works with non-default branches)
+            # The Contents API doesn't properly support updating existing files on non-default branches
+            # So we use the Git Data API instead: create blob -> create tree -> create commit -> update ref
+            
+            # Step 1: Create a blob with the new content
+            blob_url = f"{base_url}/repos/{request.repository}/git/blobs"
+            blob_payload = {
                 "content": encoded_content,
-                "sha": file_sha,
-                "branch": branch
+                "encoding": "base64"
             }
+            blob_response = await client.post(blob_url, headers=headers, json=blob_payload)
+            if blob_response.status_code not in [200, 201]:
+                raise HTTPException(status_code=blob_response.status_code, detail=f"Failed to create blob: {blob_response.text}")
+            blob_sha = blob_response.json()['sha']
             
-            update_response = await client.put(
-                file_url,
-                headers=headers,
-                json=update_payload
-            )
+            # Step 2: Get the current commit SHA of the branch
+            ref_url = f"{base_url}/repos/{request.repository}/git/ref/heads/{branch}"
+            ref_response = await client.get(ref_url, headers=headers)
+            if ref_response.status_code != 200:
+                raise HTTPException(status_code=ref_response.status_code, detail=f"Failed to get branch ref: {ref_response.text}")
+            current_commit_sha = ref_response.json()['object']['sha']
+            
+            # Step 3: Get the tree of the current commit
+            commit_url = f"{base_url}/repos/{request.repository}/git/commits/{current_commit_sha}"
+            commit_response = await client.get(commit_url, headers=headers)
+            if commit_response.status_code != 200:
+                raise HTTPException(status_code=commit_response.status_code, detail=f"Failed to get commit: {commit_response.text}")
+            base_tree_sha = commit_response.json()['tree']['sha']
+            
+            # Step 4: Create a new tree with the updated file
+            tree_url = f"{base_url}/repos/{request.repository}/git/trees"
+            tree_payload = {
+                "base_tree": base_tree_sha,
+                "tree": [{
+                    "path": request.workflow_file_path,
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob_sha
+                }]
+            }
+            tree_response = await client.post(tree_url, headers=headers, json=tree_payload)
+            if tree_response.status_code not in [200, 201]:
+                raise HTTPException(status_code=tree_response.status_code, detail=f"Failed to create tree: {tree_response.text}")
+            new_tree_sha = tree_response.json()['sha']
+            
+            # Step 5: Create a new commit
+            new_commit_url = f"{base_url}/repos/{request.repository}/git/commits"
+            new_commit_payload = {
+                "message": commit_message,
+                "tree": new_tree_sha,
+                "parents": [current_commit_sha]
+            }
+            new_commit_response = await client.post(new_commit_url, headers=headers, json=new_commit_payload)
+            if new_commit_response.status_code not in [200, 201]:
+                raise HTTPException(status_code=new_commit_response.status_code, detail=f"Failed to create commit: {new_commit_response.text}")
+            new_commit_sha = new_commit_response.json()['sha']
+            
+            # Step 6: Update the branch reference to point to the new commit
+            # Note: PATCH requires /git/refs/heads/{branch} (with 's' in refs)
+            update_ref_url = f"{base_url}/repos/{request.repository}/git/refs/heads/{branch}"
+            update_ref_payload = {
+                "sha": new_commit_sha,
+                "force": False
+            }
+            update_ref_response = await client.patch(update_ref_url, headers=headers, json=update_ref_payload)
+            if update_ref_response.status_code not in [200]:
+                raise HTTPException(status_code=update_ref_response.status_code, detail=f"Failed to update branch: {update_ref_response.text}")
+            
+            # Create a fake response object to match the expected structure
+            # Build the HTML URL for the commit
+            commit_html_url = f"https://github.com/{request.repository}/commit/{new_commit_sha}"
+            update_response = type('obj', (object,), {
+                'status_code': 200,
+                'json': lambda self: {
+                    'commit': {
+                        'sha': new_commit_sha,
+                        'html_url': commit_html_url
+                    }
+                }
+            })()
             
             if update_response.status_code not in [200, 201]:
-                error_detail = update_response.json() if update_response.status_code != 404 else {"message": "Update failed"}
+                # Log the full error response for debugging
+                try:
+                    error_detail = update_response.json()
+                except:
+                    error_detail = {"message": update_response.text}
+                
+                print(f"GitHub API Error - Status: {update_response.status_code}")
+                print(f"GitHub API Error - Response: {error_detail}")
+                print(f"GitHub API Error - URL: {file_url}")
+                print(f"GitHub API Error - Branch: {branch}")
+                print(f"GitHub API Error - Full error details: {error_detail}")
+                print(f"GitHub API Error - Response headers: {dict(update_response.headers)}")
+                
+                # Check if it's an authentication/permission issue
+                if update_response.status_code == 404:
+                    print(f"404 suggests either: 1) Repository doesn't exist, 2) No repo access, 3) File path wrong, or 4) Token lacks permissions")
+                    print(f"Repository path: {request.repository}")
+                    print(f"File path: {request.workflow_file_path}")
+                
                 raise HTTPException(
                     status_code=update_response.status_code,
                     detail=f"Failed to update workflow: {error_detail.get('message', 'Unknown error')}"
@@ -2587,7 +2733,7 @@ async def apply_workflow_enhancement(request: WorkflowEnhancementApplyRequest):
             # 5. If pull request, create it
             pr_html_url = None
             if request.method == 'pull_request':
-                pr_url = f"https://api.github.com/repos/{request.repository}/pulls"
+                pr_url = f"{base_url}/repos/{request.repository}/pulls"
                 pr_payload = {
                     "title": commit_message,
                     "head": branch,
@@ -2655,12 +2801,15 @@ async def detect_workflow_duplicates(request: DuplicateDetectionRequest, db: Ses
             raise HTTPException(status_code=400, detail="GITHUB_TOKEN secret not found or invalid")
         
         # Fetch workflow content from GitHub
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         headers = {
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
         
-        workflow_url = f"https://api.github.com/repos/{request.repository}/contents/{request.workflow_file_path}"
+        workflow_url = f"{base_url}/repos/{request.repository}/contents/{request.workflow_file_path}"
         
         async with httpx.AsyncClient(verify=False) as client:
             response = await client.get(workflow_url, headers=headers)
@@ -2814,10 +2963,13 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
             for dup in request.duplicates_to_remove
         )
         
+        # Get GitHub API base URL
+        base_url = GitHubService.get_base_url()
+        
         async with httpx.AsyncClient(verify=False) as client:
             if remove_entire_file:
                 # Remove the entire workflow file
-                file_url = f"https://api.github.com/repos/{request.repository}/contents/{request.workflow_file_path}"
+                file_url = f"{base_url}/repos/{request.repository}/contents/{request.workflow_file_path}"
                 
                 # Get file SHA
                 file_response = await client.get(file_url, headers=headers)
@@ -2835,12 +2987,12 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                 pr_html_url = None
                 if request.method == 'pull_request':
                     # Get default branch
-                    repo_url = f"https://api.github.com/repos/{request.repository}"
+                    repo_url = f"{base_url}/repos/{request.repository}"
                     repo_response = await client.get(repo_url, headers=headers)
                     default_branch = repo_response.json()['default_branch']
                     
                     # Get base SHA
-                    ref_url = f"https://api.github.com/repos/{request.repository}/git/ref/heads/{default_branch}"
+                    ref_url = f"{base_url}/repos/{request.repository}/git/ref/heads/{default_branch}"
                     ref_response = await client.get(ref_url, headers=headers)
                     base_sha = ref_response.json()['object']['sha']
                     
@@ -2849,7 +3001,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
                     branch = request.branch_name or f"remove-duplicate-workflow-{timestamp}"
                     
-                    create_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs"
+                    create_ref_url = f"{base_url}/repos/{request.repository}/git/refs"
                     create_ref_payload = {
                         "ref": f"refs/heads/{branch}",
                         "sha": base_sha
@@ -2858,7 +3010,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                     
                     if create_ref_response.status_code not in [201]:
                         # Branch might already exist, try to update it
-                        update_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs/heads/{branch}"
+                        update_ref_url = f"{base_url}/repos/{request.repository}/git/refs/heads/{branch}"
                         update_ref_payload = {"sha": base_sha, "force": True}
                         await client.patch(update_ref_url, headers=headers, json=update_ref_payload)
                 
@@ -2879,7 +3031,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                 
                 # Create PR if requested
                 if request.method == 'pull_request':
-                    pr_url = f"https://api.github.com/repos/{request.repository}/pulls"
+                    pr_url = f"{base_url}/repos/{request.repository}/pulls"
                     pr_payload = {
                         "title": commit_message,
                         "head": branch,
@@ -2904,7 +3056,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
             
             else:
                 # Partial removal - remove specific jobs or steps
-                file_url = f"https://api.github.com/repos/{request.repository}/contents/{request.workflow_file_path}"
+                file_url = f"{base_url}/repos/{request.repository}/contents/{request.workflow_file_path}"
                 file_response = await client.get(file_url, headers=headers)
                 
                 if file_response.status_code != 200:
@@ -2947,11 +3099,11 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                 # If pull request method, create a new branch
                 pr_html_url = None
                 if request.method == 'pull_request':
-                    repo_url = f"https://api.github.com/repos/{request.repository}"
+                    repo_url = f"{base_url}/repos/{request.repository}"
                     repo_response = await client.get(repo_url, headers=headers)
                     default_branch = repo_response.json()['default_branch']
                     
-                    ref_url = f"https://api.github.com/repos/{request.repository}/git/ref/heads/{default_branch}"
+                    ref_url = f"{base_url}/repos/{request.repository}/git/ref/heads/{default_branch}"
                     ref_response = await client.get(ref_url, headers=headers)
                     base_sha = ref_response.json()['object']['sha']
                     
@@ -2959,7 +3111,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
                     branch = request.branch_name or f"remove-duplicates-{timestamp}"
                     
-                    create_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs"
+                    create_ref_url = f"{base_url}/repos/{request.repository}/git/refs"
                     create_ref_payload = {
                         "ref": f"refs/heads/{branch}",
                         "sha": base_sha
@@ -2968,7 +3120,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                     
                     if create_ref_response.status_code not in [201]:
                         # Branch might already exist, try to update it
-                        update_ref_url = f"https://api.github.com/repos/{request.repository}/git/refs/heads/{branch}"
+                        update_ref_url = f"{base_url}/repos/{request.repository}/git/refs/heads/{branch}"
                         update_ref_payload = {"sha": base_sha, "force": True}
                         await client.patch(update_ref_url, headers=headers, json=update_ref_payload)
                 
@@ -2993,7 +3145,7 @@ async def remove_workflow_duplicates(request: DuplicateRemovalRequest, db: Sessi
                 
                 # Create PR if requested
                 if request.method == 'pull_request':
-                    pr_url = f"https://api.github.com/repos/{request.repository}/pulls"
+                    pr_url = f"{base_url}/repos/{request.repository}/pulls"
                     pr_payload = {
                         "title": commit_message,
                         "head": branch,

@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: github-onboarding-backend:latest
+    container_name: github-onboarding-backend
+    environment:
+      # GitHub API URL (optional - defaults to GitHub.com)
+      # Uncomment and set for GitHub Enterprise Server:
+      # - GITHUB_API_URL=https://github.enterprise.com/api/v3
+      - PORT=8000
+    volumes:
+      # Persist database files
+      - ./backend/data:/app/data
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: github-onboarding-frontend:latest
+    container_name: github-onboarding-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local

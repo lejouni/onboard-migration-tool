@@ -26,6 +26,7 @@ A comprehensive full-stack web application for managing GitHub organizations, re
 │   ├── database.py       # Dual database configuration
 │   ├── workflow_parser.py # YAML workflow manipulation
 │   ├── requirements.txt  # Python dependencies
+│   ├── Dockerfile        # Backend container definition
 │   ├── data/             # Database storage (gitignored)
 │   │   ├── secrets.db    # Encrypted secrets database
 │   │   ├── templates.db  # Workflow templates database
@@ -49,21 +50,50 @@ A comprehensive full-stack web application for managing GitHub organizations, re
 │   │   └── index.css                # Application styles
 │   ├── public/       # Static files
 │   ├── package.json  # Node.js dependencies
+│   ├── .env.development  # Local development environment variables
+│   ├── Dockerfile    # Frontend container definition
+│   ├── nginx.conf    # Nginx reverse proxy configuration
 │   └── README.md     # Frontend setup instructions
 ├── .vscode/          # VS Code tasks and settings
 │   └── tasks.json    # VS Code build/run tasks
 ├── .gitignore        # Git ignore rules (protects secrets & databases)
+├── .dockerignore     # Docker build optimization
+├── docker-compose.yml # Docker Compose configuration (2 services)
+├── start.ps1         # Automated start script (Windows)
+├── LICENSE           # MIT License
 └── README.md         # This file
 ```
 
 ## Quick Start
+
+### Easiest Way: Docker (Recommended)
+
+**Windows Users:**
+```powershell
+.\start.ps1
+```
+The script will build, start the container, and open your browser automatically!
+
+**All Platforms:**
+```bash
+docker-compose up -d
+# Then open http://localhost:8000
+```
+
+📖 See [section 4 below](#4-using-docker-easiest---recommended) for complete Docker instructions.
+
+### Manual Setup (Development)
 
 ### Prerequisites
 
 - **Python 3.8+** installed (3.13 recommended)
 - **Node.js 16+** and npm installed (Node 18+ recommended)
 - **GitHub Personal Access Token** ([Create one here](https://github.com/settings/tokens))
-  - Required scopes: `repo`, `read:org`, `workflow`
+  - **Required scopes:** 
+    - `repo` - Access repositories (read and write)
+    - `read:org` - Read organization membership and data
+    - `workflow` - **Required for modifying workflow files** in `.github/workflows/` directory
+  - ⚠️ **Important:** The `workflow` scope is essential for AI Workflow Enhancement features
 - Git (optional)
 
 ### Key Dependencies
@@ -129,7 +159,130 @@ npm start
 
 The frontend application will be available at: http://localhost:3000
 
-### 4. Using VS Code Tasks (Recommended)
+### 4. Using Docker (Easiest - Recommended)
+
+Runs the application using **two separate containers**:
+- **Backend**: FastAPI serving REST API (Python)
+- **Frontend**: Nginx serving React app with reverse proxy to backend
+
+#### Prerequisites
+- Docker installed ([Download Docker](https://www.docker.com/products/docker-desktop))
+- Docker Compose (included with Docker Desktop)
+
+#### Architecture Benefits
+- ✅ **Independent scaling** - Scale frontend and backend separately
+- ✅ **Faster rebuilds** - Changes to one don't require rebuilding the other
+- ✅ **Production-ready** - Uses nginx for optimized static file serving
+- ✅ **Clean separation** - Frontend and backend are truly decoupled
+
+#### Quick Start with Docker Compose
+
+**Option 1: Automated Start with Browser (Windows - Recommended)**
+```powershell
+# From the project root directory
+.\start.ps1
+```
+
+This PowerShell script will:
+- Build and start both containers (backend + frontend)
+- Wait for the application to be ready
+- Automatically open http://localhost in your browser
+
+**Option 2: Manual Start**
+```bash
+# From the project root directory
+docker-compose up -d
+```
+
+This will:
+- Build both Docker images (first time only, may take 2-5 minutes)
+- Start both containers in detached mode
+- Expose the application on port 80 (standard HTTP)
+
+**Access the application:**
+- **Frontend**: http://localhost (port 80)
+- **API Documentation**: http://localhost/docs
+- **API Endpoints**: http://localhost/api/
+- Nginx automatically proxies API requests to the backend container
+
+**3. View logs:**
+```bash
+# Follow logs for all containers
+docker-compose logs -f
+
+# Follow logs for specific container
+docker-compose logs -f frontend
+docker-compose logs -f backend
+
+# View last 100 lines
+docker-compose logs --tail=100
+```
+
+**4. Stop the containers:**
+```bash
+docker-compose down
+```
+
+#### For GitHub Enterprise Server
+
+Edit `docker-compose.yml` and uncomment/set the environment variable:
+
+```yaml
+environment:
+  - GITHUB_API_URL=https://github.enterprise.com/api/v3
+```
+
+Then rebuild and restart:
+```bash
+docker-compose up -d --build
+```
+
+#### Data Persistence
+
+- Database files are automatically stored in `backend/data/` on your host machine
+- Data persists even when container is stopped or removed
+- To completely reset, delete the `backend/data/` directory
+
+#### Troubleshooting Docker
+
+**Port already in use:**
+```bash
+# Check what's using port 80
+netstat -ano | findstr :80  # Windows
+lsof -i :80                  # Linux/Mac
+
+# Change port in docker-compose.yml (frontend service):
+ports:
+  - "8080:80"  # Use 8080 instead, then access at http://localhost:8080
+```
+
+**Rebuild after code changes:**
+```bash
+# Rebuild specific container
+docker-compose up -d --build frontend
+docker-compose up -d --build backend
+
+# Rebuild all containers
+docker-compose up -d --build
+```
+
+**View container status:**
+```bash
+docker-compose ps
+```
+
+**Access container shell:**
+```bash
+docker-compose exec backend /bin/sh
+docker-compose exec frontend /bin/sh
+```
+
+**Access container shell:**
+```bash
+docker-compose exec app /bin/sh
+```
+
+### 5. Using VS Code Tasks (Development)
 
 Open the project in VS Code and use the built-in tasks:
 
@@ -177,6 +330,7 @@ The application includes multiple powerful sections accessible via tab navigatio
 - Keyword matching against templates (coverity, polaris, blackduck)
 - Export scan results
 - Legacy configuration detection
+- **Supports unlimited repositories** with automatic pagination
 
 **Dashboard Metrics:**
 - Total legacy files found
@@ -195,6 +349,7 @@ The application includes multiple powerful sections accessible via tab navigatio
 
 **Repository Management:**
 - Browse repositories by organization or user scope
+- **Automatic pagination** - fetches all repositories without limits
 - Filter repositories by programming language
 - View repository statistics (stars, forks, watchers, issues)
 - Display repository metadata (license, language, last updated)
@@ -251,6 +406,7 @@ The application includes multiple powerful sections accessible via tab navigatio
 - Multi-branch scanning support
 - Real-time progress tracking
 - Interactive scan dashboard
+- **Scans all repositories** with automatic pagination (no 100 repo limit)
 
 **Dashboard Features:**
 - Legacy files found count
@@ -284,6 +440,7 @@ The application includes multiple powerful sections accessible via tab navigatio
    - Create a new secret with name: `GITHUB_TOKEN`
    - Paste your GitHub Personal Access Token as the value
    - Save the secret
+   - ⚠️ **Verify the token has `workflow` scope** if you plan to use AI Workflow Enhancement features
 
 3. **SSO Authorization (if required):**
    - If your organization requires SAML SSO:
@@ -563,9 +720,10 @@ When the backend is running, visit:
 
 **GitHub API calls failing:**
 - Verify GITHUB_TOKEN is stored in Secrets Management
-- Check token has required scopes (`repo`, `read:org`)
+- Check token has required scopes (`repo`, `read:org`, and `workflow` for workflow modifications)
 - Verify token is not expired
 - Check network tab in browser developer tools
+- If getting 404 on workflow modifications, ensure `workflow` scope is enabled
 
 **SSL/Certificate errors:**
 - SSL verification is temporarily disabled for development
@@ -587,7 +745,11 @@ When the backend is running, visit:
 - Never exposed in frontend code
 - Transmitted securely between frontend and backend
 - Automatically decrypted only when needed for API calls
-
+**GitHub Token Requirements**
+- ✅ `repo` scope - Required for all repository operations
+- ✅ `read:org` scope - Required for organization operations
+- ✅ `workflow` scope - **Essential for modifying workflow files** (AI Enhancement features)
+- Missing `workflow` scope will cause 404 errors when trying to update `.github/workflows/*` files
 ### SSO (Single Sign-On) Support
 - **Automatic SSO error detection** with helpful messages
 - **Built-in authorization guidance** in Secrets Management tab
@@ -614,13 +776,37 @@ When the backend is running, visit:
 - Team management
 
 ### Deployment
-Deploy to production:
+
+**Option 1: Docker (Recommended)**
+```bash
+# Build the Docker image
+docker build -t github-onboarding-tool .
+
+# Run with Docker
+docker run -d \
+  -p 8000:8000 \
+  -v $(pwd)/backend/data:/app/backend/data \
+  -e GITHUB_API_URL=https://github.enterprise.com/api/v3 \
+  github-onboarding-tool
+
+# Or use Docker Compose
+docker-compose up -d
+```
+
+**Option 2: Traditional Deployment**
 1. **Backend**: Deploy to AWS, Azure, or Railway
-2. **Frontend**: Deploy to Netlify, Vercel, or AWS S3
+2. **Frontend**: Build and serve static files from backend or CDN
 3. Configure environment variables
 4. Set up production database (PostgreSQL recommended)
 5. Enable SSL/TLS certificates
 6. Configure proper CORS origins
+
+**Production Considerations:**
+- Use volume mounts to persist database files
+- Set `GITHUB_API_URL` for GitHub Enterprise
+- Enable SSL/TLS in production
+- Use a reverse proxy (nginx) for additional security
+- Implement rate limiting and monitoring
 
 ### Additional Improvements
 - Unit and integration tests

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { githubAPI } from './githubAPI';
 import Dashboard from './Dashboard';
 
+// Use relative URL for Docker/nginx proxy, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+
 const LegacyConfigCleanup = () => {
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
@@ -181,7 +184,7 @@ const LegacyConfigCleanup = () => {
             if (scanAllBranches) {
               try {
                 const [owner, repoNameOnly] = repoName.split('/');
-                const branchesResponse = await fetch(`http://localhost:8000/api/github/repositories/${owner}/${repoNameOnly}/branches`);
+                const branchesResponse = await fetch(`${API_BASE_URL}/github/repositories/${owner}/${repoNameOnly}/branches`);
                 if (branchesResponse.ok) {
                   const branchesData = await branchesResponse.json();
                   branchesToScan = branchesData.branches?.map(b => b.name) || ['main'];
@@ -203,7 +206,7 @@ const LegacyConfigCleanup = () => {
               try {
                 console.log(`Scanning ${repoName} branch: ${branch}`);
                 // Get repository tree for this branch
-                const response = await fetch(`http://localhost:8000/api/github/repositories/${repoName}/tree?branch=${encodeURIComponent(branch)}`);
+                const response = await fetch(`${API_BASE_URL}/github/repositories/${repoName}/tree?branch=${encodeURIComponent(branch)}`);
                 
                 if (!response.ok) {
                   console.warn(`Failed to get tree for ${repoName} branch ${branch}`);
@@ -243,7 +246,7 @@ const LegacyConfigCleanup = () => {
               // Check 2: Workflow files with legacy keywords in content (only if not already found by filename)
               if (isWorkflowFile(file.path)) {
                 try {
-                  const contentResponse = await fetch(`http://localhost:8000/api/github/repositories/${repoName}/contents/${encodeURIComponent(file.path)}`);
+                  const contentResponse = await fetch(`${API_BASE_URL}/github/repositories/${repoName}/contents/${encodeURIComponent(file.path)}`);
                   
                   if (contentResponse.ok) {
                     const contentData = await contentResponse.json();
@@ -394,8 +397,8 @@ const LegacyConfigCleanup = () => {
 
         try {
           const endpoint = deletionMode === 'pr' 
-            ? `http://localhost:8000/api/github/repositories/${file.repository}/delete-file-pr`
-            : `http://localhost:8000/api/github/repositories/${file.repository}/delete-file`;
+            ? `${API_BASE_URL}/github/repositories/${file.repository}/delete-file-pr`
+            : `${API_BASE_URL}/github/repositories/${file.repository}/delete-file`;
           
           const response = await fetch(endpoint, {
             method: deletionMode === 'pr' ? 'POST' : 'DELETE',

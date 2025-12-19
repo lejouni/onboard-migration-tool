@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { githubAPI } from './githubAPI';
 
+// Use relative URL for Docker/nginx proxy, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+
 const GitHubOrganizations = () => {
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
@@ -206,7 +209,7 @@ const GitHubOrganizations = () => {
       setError('');
       
       // Call the API directly with owner and repo name
-      const response = await fetch(`http://localhost:8000/api/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/details`);
+      const response = await fetch(`${API_BASE_URL}/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/details`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -479,7 +482,7 @@ const GitHubOrganizations = () => {
     
     try {
       // Call the backend API to scan repositories with branch selection
-      const response = await fetch('http://localhost:8000/api/onboarding/scan', {
+      const response = await fetch(`${API_BASE_URL}/onboarding/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -514,7 +517,7 @@ const GitHubOrganizations = () => {
       setMigrationResult(null);
       setShowMigrationModal(true);
 
-      const response = await fetch('http://localhost:8000/api/polaris/convert', {
+      const response = await fetch(`${API_BASE_URL}/polaris/convert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -577,7 +580,7 @@ const GitHubOrganizations = () => {
     try {
       setMigratingPolaris(true); // Show loading state
       
-      const response = await fetch('http://localhost:8000/api/polaris/create-pr', {
+      const response = await fetch(`${API_BASE_URL}/polaris/create-pr`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

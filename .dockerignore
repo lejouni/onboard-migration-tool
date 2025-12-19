@@ -1,0 +1,72 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+LICENSE
+docs/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Frontend build (will be built in Docker)
+frontend/build/
+frontend/dist/
+
+# Testing
+.pytest_cache/
+coverage/
+htmlcov/
+.coverage
+*.cover
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database files (will be created in container)
+backend/data/*.db
+backend/data/*.key
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Development files
+*.bak
+*.tmp
+*.old

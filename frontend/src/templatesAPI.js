@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Use relative URL for Docker/nginx proxy, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 export const templatesAPI = {
   // Get all templates

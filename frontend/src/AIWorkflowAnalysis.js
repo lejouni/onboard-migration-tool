@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { githubAPI } from './githubAPI';
 
+// Use relative URL for Docker/nginx proxy, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+
 const AIWorkflowAnalysis = () => {
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
@@ -256,7 +259,7 @@ const AIWorkflowAnalysis = () => {
     
     try {
       // Call the AI analysis endpoint
-      const response = await fetch('http://localhost:8000/api/ai-analyze', {
+      const response = await fetch(`${API_BASE_URL}/ai-analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +312,7 @@ const AIWorkflowAnalysis = () => {
         requestBody.template_content = templateContent;
       }
       
-      const response = await fetch('http://localhost:8000/api/templates/apply', {
+      const response = await fetch(`${API_BASE_URL}/templates/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -358,7 +361,7 @@ const AIWorkflowAnalysis = () => {
   const handleViewTemplate = async (repository, templateName, method) => {
     try {
       // Fetch the template content
-      const response = await fetch(`http://localhost:8000/api/templates/search/${encodeURIComponent(templateName)}`);
+      const response = await fetch(`${API_BASE_URL}/templates/search/${encodeURIComponent(templateName)}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch template');
@@ -412,7 +415,7 @@ const AIWorkflowAnalysis = () => {
     setNotification(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/workflows/preview-enhancement', {
+      const response = await fetch(`${API_BASE_URL}/workflows/preview-enhancement`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -469,7 +472,7 @@ const AIWorkflowAnalysis = () => {
     setNotification(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/workflows/apply-enhancement', {
+      const response = await fetch(`${API_BASE_URL}/workflows/apply-enhancement`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
