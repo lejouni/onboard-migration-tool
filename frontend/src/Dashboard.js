@@ -1,11 +1,10 @@
 import React from 'react';
 
-const Dashboard = ({ legacyFiles = [], scanDuration = null }) => {
+const Dashboard = ({ legacyFiles = [], scanDuration = null, totalRepositoriesScanned = 0, totalBranchesScanned = 0 }) => {
   // Calculate metrics from legacyFiles
   const totalFiles = legacyFiles.length;
   const repositories = [...new Set(legacyFiles.map(f => f.repository))];
   const totalRepos = repositories.length;
-  const branches = [...new Set(legacyFiles.map(f => f.branch || 'main'))];
   
   // Group by keyword
   const keywordStats = {};
@@ -54,10 +53,18 @@ const Dashboard = ({ legacyFiles = [], scanDuration = null }) => {
         </div>
 
         <div className="metric-card">
+          <div className="metric-icon">🔍</div>
+          <div className="metric-content">
+            <div className="metric-value">{totalRepositoriesScanned}</div>
+            <div className="metric-label">Total Repos Scanned</div>
+          </div>
+        </div>
+
+        <div className="metric-card">
           <div className="metric-icon">🌿</div>
           <div className="metric-content">
-            <div className="metric-value">{branches.length}</div>
-            <div className="metric-label">Branches Scanned</div>
+            <div className="metric-value">{totalBranchesScanned}</div>
+            <div className="metric-label">Total Branches Scanned</div>
           </div>
         </div>
 

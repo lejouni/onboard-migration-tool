@@ -29,10 +29,13 @@ from crypto import decrypt_secret
 from workflow_duplicate_detector import DuplicateDetector
 from ai_analysis_parallel import analyze_repositories_parallel
 
+# Application version
+APP_VERSION = "1.0.0"
+
 app = FastAPI(
     title="Backend API with Secrets Management",
     description="A FastAPI backend with encrypted secrets storage",
-    version="1.0.0"
+    version=APP_VERSION
 )
 
 # Create database tables on startup
@@ -250,6 +253,16 @@ async def delete_item(item_id: int):
     global items_db
     items_db = [item for item in items_db if item["id"] != item_id]
     return {"message": "Item deleted successfully"}
+
+# ========== VERSION ENDPOINT ==========
+
+@app.get("/api/version")
+async def get_version():
+    """Get application version"""
+    return {
+        "version": APP_VERSION,
+        "name": "GitHub Onboarding & Workflow Migration Tool"
+    }
 
 # ========== SECRETS MANAGEMENT ENDPOINTS ==========
 

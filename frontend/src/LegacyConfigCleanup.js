@@ -33,6 +33,8 @@ const LegacyConfigCleanup = () => {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [scanDuration, setScanDuration] = useState(0);
   const [completedScanDuration, setCompletedScanDuration] = useState(null);
+  const [totalRepositoriesScanned, setTotalRepositoriesScanned] = useState(0);
+  const [totalBranchesScanned, setTotalBranchesScanned] = useState(0);
   const scanStartTimeRef = useRef(null);
 
   // Function to check if filename contains legacy keywords
@@ -62,6 +64,50 @@ const LegacyConfigCleanup = () => {
   // Remove keyword from the list
   const removeKeyword = (keyword) => {
     setKeywords(keywords.filter(k => k !== keyword));
+  };
+
+  // Export results to CSV
+  const exportToCSV = () => {
+    if (legacyFiles.length === 0) return;
+
+    // CSV headers
+    const headers = ['Repository', 'Path', 'Branch', 'Reason', 'Matched Keywords', 'SHA', 'URL'];
+    
+    // CSV rows
+    const rows = legacyFiles.map(file => [
+      file.repository || '',
+      file.path || '',
+      file.branch || '',
+      file.reason || '',
+      (file.matchedKeywords || []).join('; '),
+      file.sha || '',
+      file.url || ''
+    ]);
+
+    // Escape CSV fields
+    const escapeCSV = (field) => {
+      if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+        return `"${field.replace(/"/g, '""')}"`;
+      }
+      return field;
+    };
+
+    // Build CSV content
+    const csvContent = [
+      headers.map(escapeCSV).join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `legacy_config_scan_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const loadOrganizations = useCallback(async () => {
@@ -164,7 +210,7 @@ const LegacyConfigCleanup = () => {
       setScanProgress({ current: 0, total: reposToScan.length });
 
       // Parallel processing with batches to improve performance
-      const BATCH_SIZE = 10; // Process 10 repos at a time
+      const BATCH_SIZE = 5; // Process 5 repos at a time
       const batches = [];
       
       for (let i = 0; i < reposToScan.length; i += BATCH_SIZE) {
@@ -289,28 +335,35 @@ const LegacyConfigCleanup = () => {
               }
             }
             
-            return repoLegacyFiles;
+            return { files: repoLegacyFiles, branchCount: branchesToScan.length };
           } catch (err) {
             console.error(`Error scanning ${repoName}:`, err);
-            return [];
+            return { files: [], branchCount: 0 };
           }
         });
 
         // Wait for the batch to complete
         const batchResults = await Promise.all(batchPromises);
         
-        // Add results to foundFiles
-        batchResults.forEach(files => foundFiles.push(...files));
+        // Add results to foundFiles and count branches
+        let batchBranchCount = 0;
+        batchResults.forEach(result => {
+          foundFiles.push(...result.files);
+          batchBranchCount += result.branchCount;
+        });
         
         // Update progress
         processedCount += batch.length;
         setScanProgress({ current: processedCount, total: reposToScan.length });
+        setTotalRepositoriesScanned(processedCount);
+        setTotalBranchesScanned(prev => prev + batchBranchCount);
         
         // Update UI with current results
         setLegacyFiles([...foundFiles]);
       }
 
       setScanProgress({ current: 0, total: 0 });
+      setTotalRepositoriesScanned(reposToScan.length); // Set final count
       
       // Calculate and set scan duration
       const now = Date.now();
@@ -939,7 +992,7 @@ const LegacyConfigCleanup = () => {
       {/* Dashboard Visualizations */}
       {legacyFiles.length > 0 && (
         <div style={{ marginTop: '40px', marginBottom: '40px' }}>
-          <Dashboard legacyFiles={legacyFiles} scanDuration={completedScanDuration} />
+          <Dashboard legacyFiles={legacyFiles} scanDuration={completedScanDuration} totalRepositoriesScanned={totalRepositoriesScanned} totalBranchesScanned={totalBranchesScanned} />
         </div>
       )}
 
@@ -983,6 +1036,37 @@ const LegacyConfigCleanup = () => {
                     <span>Scan completed in {Math.floor(completedScanDuration / 60)}:{(completedScanDuration % 60).toString().padStart(2, '0')}</span>
                   </div>
                 )}
+                
+                {/* Export CSV Button */}
+                <button
+                  onClick={exportToCSV}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 4px 6px rgba(102, 126, 234, 0.25)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(102, 126, 234, 0.35)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(102, 126, 234, 0.25)';
+                  }}
+                >
+                  <span>📥</span>
+                  <span>Export CSV</span>
+                </button>
                 
                 {/* Page Size Selector */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
