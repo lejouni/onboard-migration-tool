@@ -2244,6 +2244,155 @@ async def analyze_workflow_with_blackduck(request: WorkflowAnalysisRequest):
         raise HTTPException(status_code=500, detail=f"Error analyzing workflow: {str(e)}")
 
 
+@app.post("/api/ai-analyze-tools")
+async def analyze_repository_tools(request: RepositoryAnalysisRequest, db: Session = Depends(get_db)):
+    """Analyze multiple repositories' workflow files to extract tools and technologies used"""
+    try:
+        import time
+        start_time = time.time()
+        
+        results = {
+            "repositories": [],
+            "total_workflows": 0,
+            "tools_summary": {
+                "actions": {},
+                "build_tools": {},
+                "languages": {},
+                "security_tools": {},
+                "package_managers": {}
+            },
+            "processing_time": 0,
+            "analysis_type": "tools_extraction"
+        }
+        
+        # Get GitHub token from secrets
+        github_token = None
+        try:
+            secret = SecretCRUD.get_secret_by_name(db, "GITHUB_TOKEN")
+            if secret:
+                github_token = decrypt_secret(secret.encrypted_value)
+        except Exception as e:
+            print(f"Warning: Could not get GitHub token: {e}")
+        
+        if not github_token:
+            raise HTTPException(status_code=400, detail="GITHUB_TOKEN secret not found or invalid")
+        
+        headers = {
+            'Authorization': f'token {github_token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        
+        # Analyze each repository
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            for repo_name in request.repositories:
+                repo_result = {
+                    "repository": repo_name,
+                    "total_workflows": 0,
+                    "tools": {
+                        "actions": [],
+                        "build_tools": [],
+                        "languages": [],
+                        "security_tools": [],
+                        "package_managers": []
+                    },
+                    "workflows": [],
+                    "error": None
+                }
+                
+                try:
+                    workflow_url = f"https://api.github.com/repos/{repo_name}/contents/.github/workflows"
+                    workflow_response = await client.get(workflow_url, headers=headers)
+                    
+                    if workflow_response.status_code == 200:
+                        workflows = workflow_response.json()
+                        
+                        for workflow_file in workflows:
+                            if workflow_file['type'] == 'file' and workflow_file['name'].endswith(('.yml', '.yaml')):
+                                try:
+                                    # Download workflow content
+                                    content_response = await client.get(workflow_file['download_url'], headers=headers)
+                                    
+                                    if content_response.status_code == 200:
+                                        workflow_content = content_response.text
+                                        
+                                        # Analyze the workflow for tools
+                                        parser = WorkflowParser()
+                                        workflow_analysis = parser.analyze_workflow(workflow_content, workflow_file['name'])
+                                        
+                                        # Extract actions used
+                                        actions_used = set()
+                                        for job_id, job_info in workflow_analysis.get('jobs', {}).items():
+                                            for step in job_info.get('steps', []):
+                                                if step.get('uses'):
+                                                    action_name = step['uses'].split('@')[0]
+                                                    actions_used.add(action_name)
+                                        
+                                        workflow_tools = {
+                                            "file": workflow_file['name'],
+                                            "actions": list(actions_used),
+                                            "build_tools": workflow_analysis.get('build_tools', []),
+                                            "languages": workflow_analysis.get('languages', []),
+                                            "security_tools": workflow_analysis.get('security_tools', [])
+                                        }
+                                        
+                                        repo_result["workflows"].append(workflow_tools)
+                                        repo_result["total_workflows"] += 1
+                                        
+                                        # Update repository-level tools
+                                        for action in actions_used:
+                                            if action not in repo_result["tools"]["actions"]:
+                                                repo_result["tools"]["actions"].append(action)
+                                        
+                                        for tool in workflow_analysis.get('build_tools', []):
+                                            if tool not in repo_result["tools"]["build_tools"]:
+                                                repo_result["tools"]["build_tools"].append(tool)
+                                        
+                                        for lang in workflow_analysis.get('languages', []):
+                                            if lang not in repo_result["tools"]["languages"]:
+                                                repo_result["tools"]["languages"].append(lang)
+                                        
+                                        for sec_tool in workflow_analysis.get('security_tools', []):
+                                            if sec_tool not in repo_result["tools"]["security_tools"]:
+                                                repo_result["tools"]["security_tools"].append(sec_tool)
+                                        
+                                except Exception as wf_error:
+                                    print(f"Error analyzing workflow {workflow_file['name']}: {wf_error}")
+                                    continue
+                    
+                    # Update global tools summary
+                    for action in repo_result["tools"]["actions"]:
+                        results["tools_summary"]["actions"][action] = results["tools_summary"]["actions"].get(action, 0) + 1
+                    
+                    for tool in repo_result["tools"]["build_tools"]:
+                        results["tools_summary"]["build_tools"][tool] = results["tools_summary"]["build_tools"].get(tool, 0) + 1
+                    
+                    for lang in repo_result["tools"]["languages"]:
+                        results["tools_summary"]["languages"][lang] = results["tools_summary"]["languages"].get(lang, 0) + 1
+                    
+                    for sec_tool in repo_result["tools"]["security_tools"]:
+                        results["tools_summary"]["security_tools"][sec_tool] = results["tools_summary"]["security_tools"].get(sec_tool, 0) + 1
+                    
+                except Exception as repo_error:
+                    repo_result["error"] = str(repo_error)
+                    print(f"Error analyzing repository {repo_name}: {repo_error}")
+                
+                results["repositories"].append(repo_result)
+                results["total_workflows"] += repo_result["total_workflows"]
+        
+        # Calculate processing time
+        processing_time = int((time.time() - start_time) * 1000)
+        results["processing_time"] = processing_time
+        
+        return results
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error analyzing repository tools: {str(e)}")
+
+
 # Workflow Enhancement Models
 class WorkflowEnhancementPreviewRequest(BaseModel):
     repository: str

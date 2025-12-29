@@ -22,6 +22,9 @@ const AIWorkflowAnalysis = () => {
   const [analysisResults, setAnalysisResults] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [toolsAnalysisResults, setToolsAnalysisResults] = useState(null);
+  const [showToolsAnalysisModal, setShowToolsAnalysisModal] = useState(false);
+  const [loadingToolsAnalysis, setLoadingToolsAnalysis] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState({}); // Track which templates are being applied
   const [viewingTemplate, setViewingTemplate] = useState(null); // { repository, templateName, content, method }
   const [editedTemplateContent, setEditedTemplateContent] = useState(''); // Modified template content
@@ -282,6 +285,45 @@ const AIWorkflowAnalysis = () => {
       setError(`Analysis failed: ${err.message}`);
     } finally {
       setLoadingAnalysis(false);
+    }
+  };
+
+  const handleToolsAnalysis = async () => {
+    const selectedRepos = repositories.filter(repo => selectedReposForAnalysis.has(repo.id));
+    
+    if (selectedRepos.length === 0) {
+      setError('Please select at least one repository for tools analysis');
+      return;
+    }
+
+    setLoadingToolsAnalysis(true);
+    setError('');
+    
+    try {
+      // Call the tools analysis endpoint
+      const response = await fetch(`${API_BASE_URL}/ai-analyze-tools`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          repositories: selectedRepos.map(repo => repo.full_name),
+          analysis_type: 'tools_extraction'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to analyze repository tools');
+      }
+
+      const data = await response.json();
+      setToolsAnalysisResults(data);
+      setShowToolsAnalysisModal(true); // Open modal with tools results
+    } catch (err) {
+      setError(`Tools analysis failed: ${err.message}`);
+    } finally {
+      setLoadingToolsAnalysis(false);
     }
   };
 
@@ -1118,6 +1160,14 @@ const AIWorkflowAnalysis = () => {
                           >
                             {loadingAnalysis ? '🔄 Analyzing...' : `🤖 Analyze Selected (${selectedReposForAnalysis.size})`}
                           </button>
+                          <button 
+                            onClick={handleToolsAnalysis}
+                            className="analyze-btn analyze-tools-btn"
+                            disabled={selectedReposForAnalysis.size === 0 || loadingToolsAnalysis}
+                            style={{ marginLeft: '10px' }}
+                          >
+                            {loadingToolsAnalysis ? '🔄 Analyzing Tools...' : `🔧 Analyze Tools from Selected (${selectedReposForAnalysis.size})`}
+                          </button>
                         </div>
                       </div>
 
@@ -1125,6 +1175,13 @@ const AIWorkflowAnalysis = () => {
                         <div className="analysis-status">
                           <div className="loading-spinner"></div>
                           <p>Analyzing repositories with AI... This may take a few moments as we process each workflow file.</p>
+                        </div>
+                      )}
+
+                      {loadingToolsAnalysis && (
+                        <div className="analysis-status">
+                          <div className="loading-spinner"></div>
+                          <p>Analyzing tools used in workflows... Extracting actions, build tools, languages, and security tools.</p>
                         </div>
                       )}
                     </div>
@@ -2906,6 +2963,439 @@ const AIWorkflowAnalysis = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Tools Analysis Modal */}
+          {showToolsAnalysisModal && toolsAnalysisResults && (
+            <div className="modal-overlay" onClick={() => setShowToolsAnalysisModal(false)} style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '20px'
+            }}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                maxWidth: '1200px',
+                width: '100%',
+                maxHeight: '90vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+              }}>
+                <div className="modal-header" style={{
+                  padding: '24px',
+                  borderBottom: '1px solid #e1e4e8',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <h2 style={{ margin: 0, fontSize: '24px', color: '#24292e' }}>
+                    🔧 Tools Analysis Results
+                  </h2>
+                  <button className="modal-close" onClick={() => setShowToolsAnalysisModal(false)} style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '28px',
+                    cursor: 'pointer',
+                    color: '#586069',
+                    padding: '0',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '6px',
+                    transition: 'all 0.2s'
+                  }}>×</button>
+                </div>
+                
+                <div className="modal-body" style={{
+                  padding: '24px',
+                  overflowY: 'auto',
+                  flex: 1
+                }}>
+                  {/* Summary Section */}
+                  <div className="tools-summary" style={{
+                    marginBottom: '30px',
+                    padding: '20px',
+                    backgroundColor: '#f6f8fa',
+                    borderRadius: '8px'
+                  }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#24292e' }}>📊 Analysis Summary</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                      <div style={{ padding: '15px', backgroundColor: 'white', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '14px', color: '#586069', marginBottom: '5px' }}>Total Repositories</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#0366d6' }}>
+                          {toolsAnalysisResults.repositories.length}
+                        </div>
+                      </div>
+                      <div style={{ padding: '15px', backgroundColor: 'white', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '14px', color: '#586069', marginBottom: '5px' }}>Total Workflows</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
+                          {toolsAnalysisResults.total_workflows}
+                        </div>
+                      </div>
+                      <div style={{ padding: '15px', backgroundColor: 'white', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '14px', color: '#586069', marginBottom: '5px' }}>Processing Time</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#6f42c1' }}>
+                          {toolsAnalysisResults.processing_time}ms
+                        </div>
+                      </div>
+                      <div style={{ padding: '15px', backgroundColor: 'white', borderRadius: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '14px', color: '#586069', marginBottom: '5px' }}>Unique Actions</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#d73a49' }}>
+                          {Object.keys(toolsAnalysisResults.tools_summary.actions).length}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Global Tools Summary */}
+                  <div className="global-tools" style={{ marginBottom: '30px' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#24292e' }}>🌍 All Tools Found Across Repositories</h3>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                      {/* GitHub Actions */}
+                      {Object.keys(toolsAnalysisResults.tools_summary.actions).length > 0 && (
+                        <div style={{ padding: '20px', backgroundColor: '#f6f8fa', borderRadius: '8px', border: '1px solid #e1e4e8' }}>
+                          <h4 style={{ margin: '0 0 15px 0', color: '#0366d6', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            ⚡ GitHub Actions ({Object.keys(toolsAnalysisResults.tools_summary.actions).length})
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {Object.entries(toolsAnalysisResults.tools_summary.actions)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([action, count]) => (
+                                <div key={action} style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: 'white',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '13px'
+                                }}>
+                                  <span style={{ fontFamily: 'monospace', color: '#24292e' }}>{action}</span>
+                                  <span style={{
+                                    backgroundColor: '#0366d6',
+                                    color: 'white',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold'
+                                  }}>{count}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Build Tools */}
+                      {Object.keys(toolsAnalysisResults.tools_summary.build_tools).length > 0 && (
+                        <div style={{ padding: '20px', backgroundColor: '#f6f8fa', borderRadius: '8px', border: '1px solid #e1e4e8' }}>
+                          <h4 style={{ margin: '0 0 15px 0', color: '#28a745', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            🔨 Build Tools ({Object.keys(toolsAnalysisResults.tools_summary.build_tools).length})
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {Object.entries(toolsAnalysisResults.tools_summary.build_tools)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([tool, count]) => (
+                                <div key={tool} style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: 'white',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '13px'
+                                }}>
+                                  <span style={{ fontFamily: 'monospace', color: '#24292e' }}>{tool}</span>
+                                  <span style={{
+                                    backgroundColor: '#28a745',
+                                    color: 'white',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold'
+                                  }}>{count}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Languages */}
+                      {Object.keys(toolsAnalysisResults.tools_summary.languages).length > 0 && (
+                        <div style={{ padding: '20px', backgroundColor: '#f6f8fa', borderRadius: '8px', border: '1px solid #e1e4e8' }}>
+                          <h4 style={{ margin: '0 0 15px 0', color: '#6f42c1', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            💻 Languages ({Object.keys(toolsAnalysisResults.tools_summary.languages).length})
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {Object.entries(toolsAnalysisResults.tools_summary.languages)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([lang, count]) => (
+                                <div key={lang} style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: 'white',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '13px'
+                                }}>
+                                  <span style={{ fontFamily: 'monospace', color: '#24292e' }}>{lang}</span>
+                                  <span style={{
+                                    backgroundColor: '#6f42c1',
+                                    color: 'white',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold'
+                                  }}>{count}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Security Tools */}
+                      {Object.keys(toolsAnalysisResults.tools_summary.security_tools).length > 0 && (
+                        <div style={{ padding: '20px', backgroundColor: '#f6f8fa', borderRadius: '8px', border: '1px solid #e1e4e8' }}>
+                          <h4 style={{ margin: '0 0 15px 0', color: '#d73a49', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            🛡️ Security Tools ({Object.keys(toolsAnalysisResults.tools_summary.security_tools).length})
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {Object.entries(toolsAnalysisResults.tools_summary.security_tools)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([tool, count]) => (
+                                <div key={tool} style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: 'white',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  fontSize: '13px'
+                                }}>
+                                  <span style={{ fontFamily: 'monospace', color: '#24292e' }}>{tool}</span>
+                                  <span style={{
+                                    backgroundColor: '#d73a49',
+                                    color: 'white',
+                                    padding: '2px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold'
+                                  }}>{count}</span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Repository-level Details */}
+                  <div className="repository-details">
+                    <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#24292e' }}>📦 Repository-Level Analysis</h3>
+                    {toolsAnalysisResults.repositories.map((repo, repoIndex) => (
+                      <div key={repoIndex} style={{
+                        marginBottom: '25px',
+                        padding: '20px',
+                        backgroundColor: '#f6f8fa',
+                        borderRadius: '8px',
+                        border: '1px solid #e1e4e8'
+                      }}>
+                        <h4 style={{ margin: '0 0 15px 0', color: '#0366d6', fontSize: '18px' }}>
+                          {repo.repository}
+                          <span style={{
+                            marginLeft: '10px',
+                            fontSize: '14px',
+                            color: '#586069',
+                            fontWeight: 'normal'
+                          }}>
+                            ({repo.total_workflows} workflow{repo.total_workflows !== 1 ? 's' : ''})
+                          </span>
+                        </h4>
+
+                        {repo.error ? (
+                          <div style={{ color: '#d73a49', padding: '10px', backgroundColor: '#ffeef0', borderRadius: '4px' }}>
+                            ⚠️ Error: {repo.error}
+                          </div>
+                        ) : (
+                          <>
+                            {/* Repository Tools Summary */}
+                            {(repo.tools.actions.length > 0 || repo.tools.build_tools.length > 0 || 
+                              repo.tools.languages.length > 0 || repo.tools.security_tools.length > 0) && (
+                              <div style={{ marginBottom: '15px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {repo.tools.actions.length > 0 && (
+                                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                    <strong style={{ color: '#586069', fontSize: '13px' }}>Actions:</strong>
+                                    {repo.tools.actions.map((action, idx) => (
+                                      <span key={idx} style={{
+                                        padding: '4px 10px',
+                                        backgroundColor: '#e1f5fe',
+                                        color: '#0366d6',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {action}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {repo.tools.build_tools.length > 0 && (
+                                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                    <strong style={{ color: '#586069', fontSize: '13px' }}>Build:</strong>
+                                    {repo.tools.build_tools.map((tool, idx) => (
+                                      <span key={idx} style={{
+                                        padding: '4px 10px',
+                                        backgroundColor: '#e8f5e9',
+                                        color: '#28a745',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {tool}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {repo.tools.languages.length > 0 && (
+                                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                    <strong style={{ color: '#586069', fontSize: '13px' }}>Languages:</strong>
+                                    {repo.tools.languages.map((lang, idx) => (
+                                      <span key={idx} style={{
+                                        padding: '4px 10px',
+                                        backgroundColor: '#f3e5f5',
+                                        color: '#6f42c1',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {lang}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {repo.tools.security_tools.length > 0 && (
+                                  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                    <strong style={{ color: '#586069', fontSize: '13px' }}>Security:</strong>
+                                    {repo.tools.security_tools.map((tool, idx) => (
+                                      <span key={idx} style={{
+                                        padding: '4px 10px',
+                                        backgroundColor: '#ffebee',
+                                        color: '#d73a49',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontFamily: 'monospace'
+                                      }}>
+                                        {tool}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Individual Workflow Details */}
+                            {repo.workflows && repo.workflows.length > 0 && (
+                              <details style={{ marginTop: '15px' }}>
+                                <summary style={{
+                                  cursor: 'pointer',
+                                  padding: '10px',
+                                  backgroundColor: 'white',
+                                  borderRadius: '4px',
+                                  fontWeight: 'bold',
+                                  fontSize: '14px',
+                                  color: '#0366d6'
+                                }}>
+                                  View Individual Workflows ({repo.workflows.length})
+                                </summary>
+                                <div style={{ marginTop: '10px', paddingLeft: '15px' }}>
+                                  {repo.workflows.map((workflow, wfIndex) => (
+                                    <div key={wfIndex} style={{
+                                      marginTop: '10px',
+                                      padding: '12px',
+                                      backgroundColor: 'white',
+                                      borderRadius: '4px',
+                                      borderLeft: '3px solid #0366d6'
+                                    }}>
+                                      <div style={{ fontWeight: 'bold', marginBottom: '8px', fontFamily: 'monospace', fontSize: '13px' }}>
+                                        📄 {workflow.file}
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px' }}>
+                                        {workflow.actions.length > 0 && (
+                                          <div>
+                                            <strong style={{ color: '#586069' }}>Actions:</strong>{' '}
+                                            {workflow.actions.join(', ')}
+                                          </div>
+                                        )}
+                                        {workflow.build_tools.length > 0 && (
+                                          <div>
+                                            <strong style={{ color: '#586069' }}>Build Tools:</strong>{' '}
+                                            {workflow.build_tools.join(', ')}
+                                          </div>
+                                        )}
+                                        {workflow.languages.length > 0 && (
+                                          <div>
+                                            <strong style={{ color: '#586069' }}>Languages:</strong>{' '}
+                                            {workflow.languages.join(', ')}
+                                          </div>
+                                        )}
+                                        {workflow.security_tools.length > 0 && (
+                                          <div>
+                                            <strong style={{ color: '#586069' }}>Security Tools:</strong>{' '}
+                                            {workflow.security_tools.join(', ')}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="modal-footer" style={{
+                  padding: '20px 24px',
+                  borderTop: '1px solid #e1e4e8',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '10px'
+                }}>
+                  <button
+                    className="btn-close"
+                    onClick={() => setShowToolsAnalysisModal(false)}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: '#0366d6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           )}
